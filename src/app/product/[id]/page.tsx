@@ -15,7 +15,8 @@ interface ProductDetails {
 }
 
 async function getProduct(id: string): Promise<ProductDetails | null> {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${id}.json`)
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${id}.json`, { next: { revalidate: 3600 } })
+    if (!res.ok) return null
     const data = await res.json()
 
     if (data.status === 1) {
@@ -35,7 +36,12 @@ async function getProduct(id: string): Promise<ProductDetails | null> {
     return null
 }
 
-export default async function ProductPage({ params }: { params: { id: string } }) {
+interface PageProps {
+    params: { id: string }
+    // searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export default async function ProductPage({ params }: PageProps) {
     const product = await getProduct(params.id)
 
     if (!product) {
@@ -43,7 +49,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
     }
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto p-4">
             <h1 className="text-3xl font-bold mb-6">{product.name}</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
@@ -52,28 +58,32 @@ export default async function ProductPage({ params }: { params: { id: string } }
                         alt={product.name}
                         width={400}
                         height={400}
-                        className="rounded-lg"
+                        className="rounded-lg object-cover"
                     />
                 </div>
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Ingredients</h2>
-                    <p className="mb-6">{product.ingredients}</p>
+                    <p className="mb-6">{product.ingredients || 'No ingredient information available.'}</p>
 
                     <h2 className="text-xl font-semibold mb-4">Nutrition Facts (per 100g)</h2>
                     <ul className="mb-6">
-                        <li>Energy: {product.nutritionFacts.energy} kcal</li>
-                        <li>Fat: {product.nutritionFacts.fat}g</li>
-                        <li>Carbohydrates: {product.nutritionFacts.carbs}g</li>
-                        <li>Proteins: {product.nutritionFacts.proteins}g</li>
+                        <li>Energy: {product.nutritionFacts.energy || 'N/A'} kcal</li>
+                        <li>Fat: {product.nutritionFacts.fat || 'N/A'}g</li>
+                        <li>Carbohydrates: {product.nutritionFacts.carbs || 'N/A'}g</li>
+                        <li>Proteins: {product.nutritionFacts.proteins || 'N/A'}g</li>
                     </ul>
 
                     <h2 className="text-xl font-semibold mb-4">Labels</h2>
                     <div className="flex flex-wrap gap-2">
-                        {product.labels.map((label) => (
-                            <span key={label} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                                {label}
-                            </span>
-                        ))}
+                        {product.labels && product.labels.length > 0 ? (
+                            product.labels.map((label) => (
+                                <span key={label} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                    {label}
+                                </span>
+                            ))
+                        ) : (
+                            <span>No labels available.</span>
+                        )}
                     </div>
                 </div>
             </div>
